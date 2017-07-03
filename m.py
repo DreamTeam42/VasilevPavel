@@ -1,6 +1,24 @@
 import requests
 from bs4 import BeautifulSoup
 
+# Количество элементов на странице
+#   на сайте варианты: 10, 20, 40. но можно и другие)
+Number_of_items_per_page = '20'
+keywords = []
+banned_keywords = []
+page = '1'
+
+
+def read_key():
+    with open('keywords.txt') as f:
+        for line in f:
+            if line != '\n' and line[0] != '#':
+                keywords.append(line.strip())
+    with open('banned_keywords.txt') as f:
+        for line in f:
+            if line != '\n' and line[0] != '#':
+                banned_keywords.append(line.strip())
+
 
 def get_general_information(lot_info):
     req = requests.get(lot_info['href'])
@@ -16,18 +34,18 @@ def get_general_information(lot_info):
 def main():
     print("--==Start==--")
     base_url = 'https://www.etp-torgi.ru'
-    url = "https://www.etp-torgi.ru/market/?action=search&search_type=all&search_record_on_page=10&search_string=\
-    &procedure_stage=4&price_from=&price_to=&currency=0&search_by_date_type=&search_date_start=&search_date_end=\
-    &checkbox_privatization_auction=on&checkbox_privatization_public_offer2=\
+    url = "https://www.etp-torgi.ru/market/?action=search&search_type=all&search_record_on_page=" +\
+          Number_of_items_per_page +\
+    "&procedure_stage=4&currency=0&checkbox_privatization_auction=on&checkbox_privatization_public_offer2=\
     on&checkbox_privatization_property_disposal=on&checkbox_privatization_realization=\
     on&checkbox_privatization_confiscated=on&checkbox_rent_auction=on&checkbox_two_parts_auction=\
-    on&order_by=date_end&order_dir=desc"
+    on&order_by=date_end&order_dir=desc&from=0&page=" + page
     lot_info = {}
     req = requests.get(url)
     print('Request =>', req.url, '\n\n')
     soup = BeautifulSoup(req.text, 'html.parser')
     tr_elements = soup.find_all('tr', class_="c1")
-    lot = tr_elements[0].find_all('td')
+    lot = tr_elements[11].find_all('td')
     for x in lot:
         print(x, '\n__________________\n')
 
@@ -40,6 +58,17 @@ def main():
 # 6 - Дата публикации, Дата окончания приема заявок, Дата рассмотрения заявок,
     # Дата начала аукциона, Дата подведения итогов торгов
 # 7 - Состояние
+    success = 0
+    for x in keywords:
+        success = lot[2].get_text().find(x)
+        if success != -1:
+            break
+    if success == -1:
+        # break
+        return
+    for x in banned_keywords:
+        if lot[2].get_text().find(x) != -1:
+            break
     lot_info['type'] = lot[0].get_text()
     lot_info['auction number'] = lot[1].get_text().split('-')[0][1:]
     lot_info['lot number'] = lot[1].get_text().split('-')[1][0:-1]
@@ -60,4 +89,5 @@ def main():
 
 
 if __name__ == '__main__':
+    read_key()
     main()
