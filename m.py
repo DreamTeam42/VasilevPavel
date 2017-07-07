@@ -1,4 +1,5 @@
 import requests
+import json
 from time import sleep
 from bs4 import BeautifulSoup
 
@@ -78,6 +79,7 @@ def get_general_information(lot_info):
 def main():
     print("--==Start==--")
     read_key()
+    f = open('data.json', 'w')
     from_ = '0'
 #    url = 'https://www.etp-torgi.ru/market/?action=search&search_record_on_page=10&procedure_stage=4&currency=0' +\
 # 9        '&checkbox_privatization_auction=on&from=10&page=2'
@@ -86,12 +88,14 @@ def main():
           "&checkbox_privatization_public_offer2=on&checkbox_privatization_property_disposal=on" +\
           "&checkbox_privatization_realization=on&checkbox_privatization_confiscated=on" +\
           "&checkbox_rent_auction=on&checkbox_two_parts_auction=on&from="
-    lot_info = {}
+    lot_info = []
+    curr_ind = 0
     res = requests.get(url + from_ + "&page=1")
     print('Request =>', res.url, '\n')
     soup = BeautifulSoup(res.text, 'html.parser')
     last_page = soup.find('ul', class_="pagination pull-left").find_all('li')[-1].a.get('href')
     last_page = int(last_page[(last_page.rfind('page=') + 5):])
+    last_page = 1
     for page in range(1, last_page + 1):
         if page != 1:
             from_ = int(Number_of_items_per_page) * page - 1
@@ -131,22 +135,27 @@ def main():
                 print('_____________================_____________\n')
                 continue
 #            if success_k == -1 and success_bk == -1:
-            lot_info['type'] = lot[0].get_text()
-            lot_info['auction number'] = lot[1].get_text().split('-')[0][1:]
-            lot_info['lot number'] = lot[1].get_text().split('-')[1][0:-1]
-            lot_info['href'] = base_url + lot[1].a.get('href')
-            lot_info['organizer'] = lot[3].a.get_text()
-            lot_info['organizer_href'] = base_url + lot[3].a.get('href')
+            lot_info.append({})
+            lot_info[curr_ind]['type'] = lot[0].get_text()
+            lot_info[curr_ind]['auction number'] = lot[1].get_text().split('-')[0][1:]
+            lot_info[curr_ind]['lot number'] = lot[1].get_text().split('-')[1][0:-1]
+            lot_info[curr_ind]['href'] = base_url + lot[1].a.get('href')
+            lot_info[curr_ind]['organizer'] = lot[3].a.get_text()
+            lot_info[curr_ind]['organizer_href'] = base_url + lot[3].a.get('href')
             a = lot[6].find_all('span')
             for x in a:
-                lot_info[x.get('title').strip()] = x.get_text().strip()
-            lot_info['status'] = lot[7].get_text()
-            get_general_information(lot_info)
+                lot_info[curr_ind][x.get('title').strip()] = x.get_text().strip()
+            lot_info[curr_ind]['status'] = lot[7].get_text()
+            get_general_information(lot_info[curr_ind])
 
-            for key, value in lot_info.items():
+            for key, value in lot_info[curr_ind].items():
                 print(key, ':', value)
-            lot_info.clear()
+#            f.write(json.dumps(lot_info[curr_ind], sort_keys=True, indent=4))
+#            f.write(',\n')
+            curr_ind += 1
             print('_____________================_____________\n')
+    f.write(json.dumps(lot_info, sort_keys=True, indent=4))
+    f.close()
     print('Done! (◕‿◕) ')
 
 
